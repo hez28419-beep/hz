@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>2026 · 唐幼新春</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Ma+Shan+Zheng&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-paper: #F9F7F2; 
+            --ink: #2C2C2C;      
+            --red: #B71C1C;      
+            --gold: #D4AF37;     
+        }
+
+        body, html {
+            width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
+            background-color: var(--bg-paper); font-family: 'Noto Serif SC', serif;
+            color: var(--ink); user-select: none; touch-action: none; cursor: grab;
+        }
+        body:active { cursor: grabbing; }
+
+        /* --- 1. 开屏页 --- */
+        #entrance-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--bg-paper); z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.5s ease-in-out; /* 加快消失速度 */
+            background-image: radial-gradient(#e0e0e0 1px, transparent 0);
+            background-size: 20px 20px;
+        }
+
+        /* 纯净圆形按钮 */
+        .start-bubble {
+            width: 110px; height: 110px; border-radius: 50%;
+            background: #D32F2F; /* 更鲜艳的红 */
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-family: 'Ma Shan Zheng'; font-size: 36px;
+            box-shadow: 0 10px 30px rgba(211, 47, 47, 0.5);
+            cursor: pointer; margin-top: 40px;
+            transition: transform 0.1s;
+            position: relative; z-index: 10;
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+        .start-bubble:active { transform: scale(0.9); }
+        .start-bubble.popped { transform: scale(1.5); opacity: 0; transition: all 0.15s ease-out; }
+
+        /* --- 2. 基础布局 --- */
+        #flow-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.8; }
+        /* 爆炸粒子层：必须在开屏页之上 */
+        #burst-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 10000; pointer-events: none; }
+
+        .footer-mark {
+            position: fixed; bottom: 12px; left: 0; width: 100%; text-align: center;
+            font-size: 10px; color: var(--ink); opacity: 0.3; letter-spacing: 4px; pointer-events: none; z-index: 150;
+            animation: breathe-text 4s ease-in-out infinite;
+        }
+        @keyframes breathe-text { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.5; } }
+
+        .music-wrapper { position: fixed; top: 20px; right: 20px; z-index: 200; display: flex; flex-direction: column; align-items: center; gap: 8px; opacity: 0; transition: opacity 1s; }
+        .music-dot { width: 36px; height: 36px; border: 1px solid var(--ink); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; background: rgba(255, 255, 255, 0.5); backdrop-filter: blur(2px); transition: all 0.3s; }
+        .music-dot.playing { border-color: var(--red); background: rgba(183, 28, 28, 0.05); animation: rotate 8s linear infinite; }
+        @keyframes rotate { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .music-dot::after { content: '♪'; font-size: 14px; color: var(--ink); }
+        .music-dot.playing::after { color: var(--red); }
+        .change-song-btn { font-size: 10px; color: #666; border: 1px solid #ccc; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.8); cursor: pointer; }
+
+        /* --- 3. 幻灯片 (全端适配核心) --- */
+        .slide {
+            position: absolute; width: 100%; height: 100%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            padding: 20px; box-sizing: border-box;
+            opacity: 0; pointer-events: none;
+            transition: opacity 1.2s cubic-bezier(0.2, 1, 0.3, 1), transform 1.2s cubic-bezier(0.2, 1, 0.3, 1);
+            transform: translateY(40px);
+        }
+        .slide.active { opacity: 1; pointer-events: auto; transform: translateY(0); z-index: 10; }
+
+        /* 响应式字体 */
+        .big-title { 
+            font-family: 'Ma Shan Zheng'; 
+            /* 手机大字，电脑适中 */
+            font-size: clamp(3.5rem, 10vw, 5rem); 
+            line-height: 1.1; 
+            background: linear-gradient(45deg, var(--ink), #555); 
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
+            margin-bottom: 2rem; text-align: center; 
+        }
+        .vertical-text { 
+            writing-mode: vertical-rl; text-orientation: mixed; font-family: 'Zhi Mang Xing'; 
+            font-size: clamp(2rem, 5vw, 3rem); 
+            letter-spacing: 0.5rem; color: var(--ink); opacity: 0.9; 
+        }
+        .red-stamp { border: 1px solid var(--red); color: var(--red); padding: 4px 12px; border-radius: 4px; font-size: 0.9rem; letter-spacing: 2px; margin-top: 2rem; display: inline-block; font-weight: bold;}
+        .number-art { font-family: 'Noto Serif SC', serif; font-size: clamp(5rem, 15vw, 8rem); font-weight: 700; color: rgba(183, 28, 28, 0.1); position: absolute; z-index: -1; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        
+        .couplet-strip { 
+            writing-mode: vertical-rl; padding: 20px 12px; font-family: 'Zhi Mang Xing'; 
+            font-size: clamp(1.5rem, 4vw, 2.2rem); 
+            letter-spacing: 0.2rem; border: 1px solid rgba(0,0,0,0.1); background: rgba(255,255,255,0.4); 
+            transition: all 0.5s ease; cursor: default; 
+        }
+        .couplet-strip:hover { border-color: var(--red); transform: translateY(-5px); background: rgba(255,255,255,0.8); }
+        
+        .polaroid { background: white; padding: 10px 10px 30px 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); transform: rotate(-1deg); transition: transform 0.5s ease; width: 260px; }
+        .polaroid:hover { transform: rotate(0deg) scale(1.02); }
+        .polaroid-img { width: 100%; height: 180px; background: #f0f0f0; display: flex; align-items: center; justify-content: center; color: #ccc; font-size: 3rem; }
+        
+        .progress-bar { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); width: 120px; height: 2px; background: rgba(0,0,0,0.1); z-index: 100; border-radius: 2px; overflow: hidden; }
+        .progress-inner { height: 100%; background: var(--red); width: 0%; transition: width 0.6s ease; }
+        .trans-en { opacity: 0; transition: opacity 0.8s; font-style: italic; color: var(--red); font-size: clamp(1rem, 2.5vw, 1.25rem); }
+
+        /* --- 4. 紧凑排版信纸 (三端通用适配) --- */
+        .scroll-letter {
+            width: 90%;
+            /* 关键：限制最大宽度，防止电脑端一行字太长 */
+            max-width: 480px; 
+            height: 60vh;
+            /* 居中 */
+            margin: 0 auto;
+            overflow-y: auto;
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(8px);
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid rgba(183, 28, 28, 0.15);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.05);
+            scrollbar-width: thin;
+            scrollbar-color: rgba(183, 28, 28, 0.3) transparent;
+            padding-bottom: 60px; 
+        }
+        .scroll-letter::-webkit-scrollbar { width: 3px; }
+        .scroll-letter::-webkit-scrollbar-thumb { background-color: rgba(183, 28, 28, 0.3); border-radius: 4px; }
+
+        /* 极度紧凑的文字排版 - 适配调整 */
+        .blessing-p { 
+            margin-bottom: 8px; /* 段间距 */
+            text-indent: 2em; 
+            text-align: justify; 
+            /* 行高和字间距优化 */
+            line-height: 1.6; 
+            font-size: 0.95rem;
+            letter-spacing: 0.02em; /* 稍微紧一点，不要太开 */
+            color: #3e2723;
+        }
+        /* 电脑端字体稍大一点点 */
+        @media (min-width: 768px) {
+            .blessing-p { font-size: 1.05rem; margin-bottom: 10px; }
+        }
+
+        .blessing-title { 
+            font-weight: 700; 
+            margin-bottom: 4px; 
+            margin-top: 14px; 
+            text-indent: 0; 
+            display: block; 
+            color: var(--red); 
+            font-size: 1rem;
+        }
+        .blessing-header { 
+            font-family: 'Ma Shan Zheng'; 
+            font-size: 1.5rem; 
+            color: var(--red); 
+            text-align: center; 
+            margin-bottom: 16px; 
+            text-indent: 0; 
+            line-height: 1.3;
+        }
+
+        #read-indicator { margin-top: 12px; font-size: 10px; color: #999; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        #read-icon { font-size: 14px; animation: bounce 1.5s infinite; }
+        #read-indicator.unlocked { color: var(--red); font-weight: bold; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
+
+        .char-jump { display: inline-block; opacity: 0; transform: translateY(3px); animation: jumpIn 0.2s ease-out forwards; }
+        @keyframes jumpIn { to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <div class="footer-mark">唐幼新春 - 2026</div>
+
+    <!-- 1. 开屏 -->
+    <div id="entrance-screen">
+        <p class="text-xs tracking-[0.5em] text-gray-400 mb-4 uppercase">HAPPY NEW YEAR</p>
+        <h1 class="text-5xl font-serif text-[#2C2C2C] mb-2" style="font-family: 'Ma Shan Zheng'">师生亲启</h1>
+        <p class="text-sm text-gray-500 font-serif tracking-widest mb-8">二零二六 · 丙午新春</p>
+        
+        <!-- 开启按钮 -->
+        <div class="start-bubble" id="start-btn">开启</div>
+        
+        <p class="mt-12 text-[10px] text-gray-400 opacity-60"><span id="loading-hint">点击开启 播放音乐</span></p>
+    </div>
+
+    <!-- 背景画布 -->
+    <canvas id="flow-canvas"></canvas>
+    <!-- 爆炸粒子画布 (层级最高) -->
+    <canvas id="burst-canvas"></canvas>
+    
+    <div class="music-wrapper" id="music-dock">
+        <div class="music-dot" id="music-btn" title="播放/暂停"></div>
+        <div class="change-song-btn" onclick="document.getElementById('file-upload').click()">换歌</div>
+        <input type="file" id="file-upload" accept="audio/*" style="display: none;">
+    </div>
+
+    <audio id="audio" loop preload="auto">
+        <source src="春风十里报新年 - 接个吻，开一枪、火鸡、吕口口、Lambert、杨胖雨.mp3" type="audio/mpeg">
+        <source src="https://upload.wikimedia.org/wikipedia/commons/e/ec/Guzheng_connect.ogg" type="audio/ogg">
+    </audio>
+
+    <main>
+        <!-- P1: 封面 -->
+        <section class="slide active">
+            <p class="text-xs tracking-[0.5em] text-gray-400 mb-8 uppercase">A.D. 2026</p>
+            <h1 class="big-title">岁序<br>常易</h1>
+            <div class="w-8 h-[2px] bg-red-800 my-8 opacity-50"></div>
+            <p class="text-sm text-gray-600 tracking-widest">华章日新 · 丙午大吉</p>
+            <div class="red-stamp">致 全体师生</div>
+            <div class="absolute bottom-16 text-[10px] opacity-30 animate-bounce">↓ 滑动翻页</div>
+        </section>
+
+        <!-- P2: 岁月 -->
+        <section class="slide">
+            <div class="number-art">365</div>
+            <h2 class="text-3xl font-serif mb-6 z-10">携手同行</h2>
+            <div class="w-full max-w-xs text-center leading-loose text-sm text-gray-600 z-10">
+                <p>三百六十五个日夜</p>
+                <p>是书声琅琅的清晨</p>
+                <p>是灯火通明的夜晚</p>
+            </div>
+            <div class="mt-12 text-xs text-red-800 opacity-60 tracking-[0.2em] z-10">OUR SHARED JOURNEY</div>
+        </section>
+
+        <!-- P3: 沉淀 -->
+        <section class="slide">
+            <div class="flex flex-row-reverse gap-4 md:gap-12 items-center justify-center h-full w-full max-w-2xl">
+                <div class="vertical-text" style="border-right: 1px solid rgba(0,0,0,0.1); padding-right: 20px;">
+                    积淀
+                </div>
+                <div class="text-left leading-loose text-gray-600 font-serif text-sm tracking-wide" style="writing-mode: vertical-rl;">
+                    乙巳灵蛇 · 潜心笃行<br>
+                    教学相长 · 亦师亦友<br>
+                    无论是讲台还是课桌<br>
+                    皆是成长的沃土
+                </div>
+            </div>
+        </section>
+
+        <!-- P4: 师魂 (修改：唐幼师生) -->
+        <section class="slide">
+            <div class="flex gap-4 md:gap-16 justify-center items-center w-full">
+                <div class="couplet-strip">满园桃李争春色</div>
+                <div class="couplet-strip">唐幼师生谱华章</div>
+            </div>
+            <div class="red-stamp">共勉</div>
+        </section>
+
+        <!-- P5: 腾飞 -->
+        <section class="slide">
+            <div class="flex flex-row gap-4 md:gap-12 items-center justify-center h-full w-full max-w-2xl">
+                <div class="vertical-text" style="color: var(--red); border-left: 1px solid rgba(183, 28, 28, 0.1); padding-left: 20px;">
+                    腾飞
+                </div>
+                <div class="text-right leading-loose text-gray-600 font-serif text-sm tracking-wide" style="writing-mode: vertical-rl;">
+                    丙午龙马 · 奋蹄扬鬃<br>
+                    愿我们 · 乘风破浪<br>
+                    再创佳绩 · 万事顺遂
+                </div>
+            </div>
+        </section>
+
+        <!-- P6: 翻译 -->
+        <section class="slide">
+            <div class="w-full text-center p-8 cursor-pointer" onclick="revealTrans()">
+                <div id="cn-text" class="transition-all duration-1000">
+                    <h2 class="text-4xl md:text-5xl mb-6" style="font-family: 'Zhi Mang Xing'">
+                        锦绣前程<br>未来可期
+                    </h2>
+                    <p class="text-xs text-gray-400 tracking-widest mt-12">点击 · 译</p>
+                </div>
+                <div id="en-text" class="trans-en absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full text-center px-4">
+                    <p class="text-xl leading-relaxed">
+                        "A bright and splendid future awaits us all.<br>
+                        Let's embrace the promising tomorrow."
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- P7: 紧凑长文案 (核心修改) -->
+        <section class="slide">
+            <div class="scroll-letter" id="letter-box">
+                <div id="long-text-container" class="font-serif"></div>
+            </div>
+            
+            <div id="read-indicator">
+                <span id="read-icon">🔒</span>
+                <span id="read-msg">请下滑阅读全文</span>
+            </div>
+        </section>
+
+        <!-- P8: 祝福 -->
+        <section class="slide">
+            <h2 class="text-4xl mb-12" style="font-family: 'Ma Shan Zheng'; color: var(--red);">心意</h2>
+            <div class="grid grid-cols-2 gap-8 w-full max-w-xs">
+                <div class="text-center cursor-pointer opacity-60 hover:opacity-100 transition duration-500" onclick="vibrate()">
+                    <div class="text-2xl font-bold mb-2 font-serif">安</div><div class="text-[10px] uppercase tracking-widest">Peace</div>
+                </div>
+                <div class="text-center cursor-pointer opacity-60 hover:opacity-100 transition duration-500" onclick="vibrate()">
+                    <div class="text-2xl font-bold mb-2 font-serif">顺</div><div class="text-[10px] uppercase tracking-widest">Flow</div>
+                </div>
+                <div class="text-center cursor-pointer opacity-60 hover:opacity-100 transition duration-500" onclick="vibrate()">
+                    <div class="text-2xl font-bold mb-2 font-serif">喜</div><div class="text-[10px] uppercase tracking-widest">Joy</div>
+                </div>
+                <div class="text-center cursor-pointer opacity-60 hover:opacity-100 transition duration-500" onclick="vibrate()">
+                    <div class="text-2xl font-bold mb-2 font-serif">吉</div><div class="text-[10px] uppercase tracking-widest">Luck</div>
+                </div>
+            </div>
+            <div class="absolute bottom-16 text-[10px] text-gray-300">唐幼师生 敬贺</div>
+        </section>
+    </main>
+
+    <div class="progress-bar"><div class="progress-inner" id="progress"></div></div>
+
+    <script>
+        // --- 1. Canvas特效 (流金背景 + 爆炸) ---
+        const cvs = document.getElementById('flow-canvas');
+        const ctx = cvs.getContext('2d');
+        const bCvs = document.getElementById('burst-canvas'); // 专门的爆炸画布
+        const bCtx = bCvs.getContext('2d');
+        
+        let cW, cH, bgPts=[], burstPts=[], trailPts=[];
+
+        function initCanvas() {
+            cW = window.innerWidth; cH = window.innerHeight;
+            cvs.width = cW; cvs.height = cH;
+            bCvs.width = cW; bCvs.height = cH;
+            
+            bgPts = [];
+            for(let i=0; i<(cW<500?50:100); i++) {
+                bgPts.push({x:Math.random()*cW, y:Math.random()*cH, vx:(Math.random()-.5)*.3, vy:(Math.random()-.5)*.3, r:Math.random()*2, a:Math.random()*.5});
+            }
+        }
+        
+        // 核心：红色大爆炸 (Big Red Explosion)
+        function spawnBigRedExplosion(x, y) {
+            // 300+ 粒子
+            for(let i=0; i<300; i++) { 
+                const angle = Math.random() * Math.PI * 2;
+                // 速度更快，范围更广
+                const speed = Math.random() * 15 + 2; 
+                // 颜色混杂：深红、正红、橙金
+                const colors = ['#D32F2F', '#B71C1C', '#FF5252', '#FFD700'];
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                
+                burstPts.push({
+                    x: x, y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    r: Math.random() * 5 + 2, // 粒子更大
+                    a: 1,
+                    life: 1.0,
+                    decay: Math.random() * 0.015 + 0.005, // 衰减慢一点
+                    color: color
+                });
+            }
+        }
+
+        // 手指拖尾 (金色)
+        function spawnTrail(x, y) {
+            for(let i=0; i<3; i++) trailPts.push({x, y, vx:(Math.random()-.5)*4, vy:(Math.random()-.5)*4, r:Math.random()*3+2, a:1});
+        }
+
+        function render() {
+            // 1. 背景层
+            ctx.clearRect(0, 0, cW, cH);
+            ctx.beginPath();
+            bgPts.forEach(p => {
+                p.x+=p.vx; p.y+=p.vy;
+                if(p.x<0||p.x>cW) p.vx*=-1; if(p.y<0||p.y>cH) p.vy*=-1;
+                ctx.moveTo(p.x, p.y); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+            });
+            ctx.fillStyle="rgba(212,175,55,0.4)"; ctx.fill();
+            
+            // 拖尾层
+            trailPts.forEach((p, i) => {
+                p.x+=p.vx; p.y+=p.vy; p.r*=.94; p.a-=.03;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+                ctx.fillStyle=`rgba(212,175,55,${p.a})`; ctx.fill();
+                if(p.a<=0) trailPts.splice(i, 1);
+            });
+
+            // 2. 爆炸层 (独立画布，清空)
+            bCtx.clearRect(0, 0, cW, cH);
+            burstPts.forEach((p, i) => {
+                p.x += p.vx; p.y += p.vy;
+                p.vx *= 0.96; p.vy *= 0.96; // 阻力
+                p.life -= p.decay;
+                
+                if (p.life > 0) {
+                    bCtx.globalAlpha = p.life;
+                    bCtx.fillStyle = p.color;
+                    bCtx.beginPath();
+                    bCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                    bCtx.fill();
+                } else {
+                    burstPts.splice(i, 1);
+                }
+            });
+            bCtx.globalAlpha = 1; // 重置
+
+            requestAnimationFrame(render);
+        }
+
+        // --- 2. 交互逻辑 ---
+        let cur = 0;
+        const slides = document.querySelectorAll('.slide');
+        const prog = document.getElementById('progress');
+        let startY = 0;
+        let isReadingDone = false;
+
+        function update() {
+            slides.forEach((s, i) => s.classList.toggle('active', i === cur));
+            prog.style.width = ((cur + 1) / slides.length) * 100 + '%';
+            if(cur === 6) typeLongText();
+        }
+
+        function next() {
+            if (cur === 6 && !isReadingDone) {
+                const hint = document.getElementById('read-msg');
+                hint.style.color = "#d32f2f"; hint.style.transform = "scale(1.1)";
+                setTimeout(() => { hint.style.transform = "scale(1)"; hint.style.color = "#999"; }, 300);
+                if(navigator.vibrate) navigator.vibrate([50, 50, 50]);
+                return; 
+            }
+            if (cur < slides.length - 1) { cur++; update(); }
+        }
+        function prev() { if (cur > 0) { cur--; update(); } }
+
+        document.addEventListener('touchstart', e => startY=e.touches[0].clientY, {passive:true});
+        document.addEventListener('touchmove', e => spawnTrail(e.touches[0].clientX, e.touches[0].clientY), {passive:true});
+        document.addEventListener('touchend', e => {
+            const dy = startY - e.changedTouches[0].clientY;
+            if(Math.abs(dy) > 50) dy > 0 ? next() : prev();
+        });
+        window.addEventListener('wheel', e => { if(e.deltaY > 0) next(); else if(e.deltaY < 0) prev(); });
+        window.addEventListener('keydown', e => { if(e.key==='ArrowDown') next(); if(e.key==='ArrowUp') prev(); });
+        document.addEventListener('mousemove', e => { if(e.buttons===1) spawnTrail(e.clientX, e.clientY); });
+
+        // --- 3. 长文案逻辑 (紧凑适配版) ---
+        let hasTyped = false;
+        function typeLongText() {
+            if(hasTyped) return; hasTyped = true;
+            const container = document.getElementById('long-text-container');
+            const paragraphs = [
+                { type: 'header', text: "马年奔腾送祝福，万象更新展宏图" },
+                { type: 'normal', text: "致全校师生：" },
+                { type: 'p', text: "骏马迎春，蹄声激越。值此甲午马年到来之际，我们谨以最诚挚的心意，向全校辛勤耕耘的老师们、朝气蓬勃的同学们，致以新春的祝福与美好的期盼！" },
+                { type: 'title', text: "致敬师者——" },
+                { type: 'p', text: "愿您如骏马驰骋，引领知识的原野，春风化雨育桃李，智慧之光点亮学子前程。新一年，愿您事业扬鞭奋蹄，生活安康顺意，桃李芬芳满天下！" },
+                { type: 'title', text: "致意学子——" },
+                { type: 'p', text: "愿你们似青春骏马，志存高远，驰骋学海；以梦为鞍，以勤为鞭，不负韶华，乘风破浪。新一年，愿你们学业“马到成功”，成长“一马当先”！" },
+                { type: 'p', text: "马年将至，让我们以龙马精神，携手奋进：" },
+                { type: 'p', text: "教学科研跃新高，求学求知步青云；校园生机如春草，师生情谊似暖阳。" },
+                { type: 'title', text: "祝愿全体师生：" },
+                { type: 'p', text: "身体健硕如骏马，事业学业腾云霄！家庭和睦福满门，新年快乐万事兴！" },
+                { type: 'p', text: "愿我们：马步生风迎盛世，同心共赴新征程！祝马年吉祥，鹏程万里！" }
+            ];
+            container.innerHTML = '';
+            
+            let globalDelay = 0;
+            const charSpeed = 0.03; 
+
+            paragraphs.forEach(section => {
+                const p = document.createElement('div');
+                if (section.type === 'header') p.className = 'blessing-header';
+                else if (section.type === 'title') p.className = 'blessing-title';
+                else p.className = 'blessing-p';
+
+                section.text.split('').forEach(char => {
+                    const span = document.createElement('span');
+                    if (char === '\n') p.appendChild(document.createElement('br'));
+                    else {
+                        span.textContent = char;
+                        span.className = 'char-jump';
+                        span.style.animationDelay = `${globalDelay}s`;
+                        p.appendChild(span);
+                        globalDelay += charSpeed;
+                    }
+                });
+                container.appendChild(p);
+                globalDelay += 0.1;
+            });
+
+            // 滚动检测
+            const box = document.getElementById('letter-box');
+            const ind = document.getElementById('read-indicator');
+            const icon = document.getElementById('read-icon');
+            const msg = document.getElementById('read-msg');
+            box.addEventListener('scroll', () => {
+                if (box.scrollTop + box.clientHeight >= box.scrollHeight - 50) {
+                    if (!isReadingDone) {
+                        isReadingDone = true;
+                        ind.classList.add('unlocked');
+                        icon.textContent = "🔓"; icon.style.animation = "none";
+                        msg.textContent = "已阅读完毕，下滑继续";
+                        if(navigator.vibrate) navigator.vibrate(50);
+                    }
+                }
+            });
+        }
+
+        // --- 4. 开启 & 音乐 ---
+        const audio = document.getElementById('audio');
+        const mBtn = document.getElementById('music-btn');
+        const entrance = document.getElementById('entrance-screen');
+        const startBtn = document.getElementById('start-btn');
+        const musicDock = document.getElementById('music-dock');
+        let playing = false;
+
+        audio.addEventListener('error', () => console.log('Audio fallback'));
+
+        startBtn.onclick = (e) => {
+            // 1. 触发大爆炸
+            const rect = startBtn.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            spawnBigRedExplosion(centerX, centerY);
+
+            // 2. 按钮消失
+            startBtn.classList.add('popped');
+
+            // 3. 播放
+            audio.play().then(() => { playing = true; mBtn.classList.add('playing'); }).catch(e => console.log(e));
+
+            // 4. 延迟隐藏开屏
+            setTimeout(() => {
+                entrance.style.opacity = '0';
+                setTimeout(() => { entrance.style.display = 'none'; musicDock.style.opacity = '1'; }, 600);
+            }, 300);
+        };
+
+        mBtn.onclick = (e) => {
+            e.stopPropagation();
+            if(playing) { audio.pause(); mBtn.classList.remove('playing'); playing=false; }
+            else { audio.play(); mBtn.classList.add('playing'); playing=true; }
+        };
+
+        document.getElementById('file-upload').onchange = (e) => {
+            if (e.target.files[0]) {
+                audio.src = URL.createObjectURL(e.target.files[0]);
+                audio.play().then(() => { playing = true; mBtn.classList.add('playing'); });
+            }
+        };
+
+        let isTrans = false;
+        function revealTrans() {
+            if(isTrans) return; isTrans=true;
+            const cn = document.getElementById('cn-text');
+            const en = document.getElementById('en-text');
+            cn.style.filter="blur(10px)"; cn.style.opacity="0";
+            setTimeout(() => en.style.opacity="1", 600);
+        }
+        function vibrate() { if(navigator.vibrate) navigator.vibrate(20); }
+
+        window.onload = () => { initCanvas(); render(); update(); };
+        window.onresize = initCanvas;
+
+    </script>
+</body>
+</html>
